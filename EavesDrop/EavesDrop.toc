@@ -1,0 +1,38 @@
+## Interface: 11201
+## Name: EavesDrop
+## Title: EavesDrop |cff7fff7f -Ace2-|r
+## Notes: A simple combat log that displays events similar to SCT
+## Notes-ruRU: Простой журнал боевых действий, в котором отображаются события, похожие на SCT
+## Version: 1.4.1
+## Author: laytya
+## SavedVariables: EavesDropDB
+## SavedVariablesPerCharacter: EavesDropStatsDB
+## X-Email: laytya@gmail.com
+## X-Website: https://github.com/laytya/EavesDrop
+## X-Category: Combat
+## X-Credits: Grayhoof, Snelf
+## X-Embeds: Ace2, Babble-2.2, Metrognome, ParserLib, DewdropLib 
+## OptionalDeps: Ace2, Babble-2.2, Metrognome, ParserLib, DewdropLib, nampower, SuperWoW, ClassicAPI, UnitXP_SP3, VanillaHelpers
+
+libs\AceLibrary\AceLibrary.lua
+libs\AceOO-2.0\AceOO-2.0.lua
+libs\AceAddon-2.0\AceAddon-2.0.lua
+libs\AceEvent-2.0\AceEvent-2.0.lua
+libs\AceDB-2.0\AceDB-2.0.lua
+libs\AceConsole-2.0\AceConsole-2.0.lua
+libs\AceLocale-2.2\AceLocale-2.2.lua
+
+libs\Metrognome-2.0\Metrognome-2.0.lua
+libs\ParserLib-1.1\ParserLib.lua
+libs\Dewdrop-2.0\Dewdrop-2.0.lua
+libs\Babble-Spell-2.2\Babble-Spell-2.2.lua
+libs\Waterfall-1.0\Waterfall-1.0.lua
+
+localization-enUS.lua
+localization-ruRU.lua
+localization-koKR.lua
+EavesDrop.lua
+EavesDropStats.lua
+options.lua
+EavesDropSuperCombat.lua
+EavesDrop.xml
