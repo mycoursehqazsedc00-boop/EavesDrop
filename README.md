@@ -22,7 +22,7 @@ their own projects; this repo doesn't bundle any of them.
 
 | DLL | Project | What it's used for here |
 |---|---|---|
-| `dpslog.dll` | [WeirdUtils / DPSLog](https://codeberg.org/MarcelineVQ/WeirdUtils/wiki) | **Preferred backend when present.** Backports WotLK's `COMBAT_LOG_EVENT_UNFILTERED` + `CombatLogGetCurrentEventInfo()` — hands over unit *names* directly (no GUID resolution needed), has its own spell-info lookup for icons, and fires buff/debuff/aura events too. Makes the four DLLs below unnecessary, though they still work as a fallback if this one isn't installed. |
+| `weirdutils.dll` | [WeirdUtils / DPSLog](https://codeberg.org/MarcelineVQ/WeirdUtils/wiki) | **Preferred backend when present.** Backports WotLK's `COMBAT_LOG_EVENT_UNFILTERED` + `CombatLogGetCurrentEventInfo()` — hands over unit *names* directly (no GUID resolution needed), has its own spell-info lookup for icons, and fires buff/debuff/aura events too. Makes the four DLLs below unnecessary, though they still work as a fallback if this one isn't installed. |
 | `nampower.dll` | [nampower](https://github.com/brues-code/nampower) | Fallback backend. Fires structured combat events (real GUIDs + spell IDs) instead of chat text. Used only if DPSLog isn't detected. |
 | `SuperWoWhook.dll` | [SuperWoW](https://github.com/balakethelock/SuperWoW) | Fallback backend support. Lets `UnitName()`/etc. accept a raw GUID directly, and resolves spell IDs to name/icon via `SpellInfo()`. Used only if DPSLog isn't detected. |
 | `ClassicAPI.dll` | [ClassicAPI](https://github.com/brues-code/ClassicAPI) | Fallback backend support. Backports a modern-style `GetSpellInfo(spellId)`; preferred over SuperWoW's `SpellInfo()` when both are present. Used only if DPSLog isn't detected. |
@@ -30,7 +30,7 @@ their own projects; this repo doesn't bundle any of them.
 | `VanillaHelpers.dll` | [VanillaHelpers](https://github.com/isfir/VanillaHelpers) | Detected and reported only — texture/minimap/model helpers, no combat or spell API, so nothing for a combat-log addon to hook. |
 
 **To get the upgraded data feed, install *either*:**
-- `dpslog.dll` on its own (simplest — it's fully self-contained), **or**
+- `weirdutils.dll` on its own (simplest — it's fully self-contained), **or**
 - `nampower.dll` + either `SuperWoWhook.dll` or `ClassicAPI.dll`
 
 Without one of those two combinations, `EavesDropSuperCombat.lua` prints one
