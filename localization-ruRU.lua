@@ -26,6 +26,7 @@ L:RegisterTranslations("ruRU", function() return {
 	["IncomingHeals"] = "Получаемое исцеление",
 	["History"] = "Показать историю EavesDrop",
 	["IncombatSummary"] = "секунд в бою",
+	["Source"] = "Источник",
 	
 	--events
 	["Events"] = "Переключаемые события",

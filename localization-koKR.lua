@@ -13,6 +13,7 @@ L:RegisterTranslations("koKR", function() return {
         ["Fades"] = "사리짐",
         ["PlayerLabel"] = "플레이어",
         ["TargetLabel"] = "대상",
+        ["Source"] = "출처",
         
         --events
         ["Events"] = "선택가능한 이벤트",

@@ -26,6 +26,7 @@ L:RegisterTranslations("enUS", function() return {
         ["IncomingHeals"] = "Incoming Heals",
         ["History"] = "Show EavesDrop History",
 		["IncombatSummary"] = "seconds in combat",
+        ["Source"] = "Source",
         
         --events
         ["Events"] = "Toggable Events",

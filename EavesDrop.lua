@@ -320,32 +320,32 @@ function EavesDrop:CombatEvent(info)
 					if (self:TrackStat(OUTGOING, info)) then
 						text = newhigh..text..newhigh
 					end
-					self:DisplayEvent(OUTGOING, text, texture, self.db.profile["TMELEE"])
+					self:DisplayEvent(OUTGOING, text, texture, self.db.profile["TMELEE"], info.victim)
 				elseif info.victim == ParserLib_SELF then
 					if (self:TrackStat(INCOMING, info)) then
 						text = newhigh..text..newhigh
 					end
-					self:DisplayEvent(INCOMING, "-"..text, texture, self.db.profile["PHIT"])
+					self:DisplayEvent(INCOMING, "-"..text, texture, self.db.profile["PHIT"], info.source)
 				end
 			else
 				if info.source == ParserLib_SELF and info.victim ~= ParserLib_SELF then
 					if (self:TrackStat(OUTGOING, info)) then
 						text = newhigh..text..newhigh
 					end
-					self:DisplayEvent(OUTGOING, text, texture, self:SpellColor(self.db.profile["TSPELL"], info.element))
+					self:DisplayEvent(OUTGOING, text, texture, self:SpellColor(self.db.profile["TSPELL"], info.element), info.victim)
 				elseif info.victim == ParserLib_SELF then
 					if (self:TrackStat(INCOMING, info)) then
 						text = newhigh..text..newhigh
 					end
-					self:DisplayEvent(INCOMING, "-"..text, texture, self:SpellColor(self.db.profile["PSPELL"], info.element))
+					self:DisplayEvent(INCOMING, "-"..text, texture, self:SpellColor(self.db.profile["PSPELL"], info.element), info.source)
 				end
 			end
 		else
 			if (self:GetTargetUnit(info.victim) == "pet" and self.db.profile["PET"] == true) then
 				if texture==nil then texture = "pet" end
-				self:DisplayEvent(INCOMING, "-"..text, texture, self.db.profile["PETI"])
+				self:DisplayEvent(INCOMING, "-"..text, texture, self.db.profile["PETI"], info.source)
 			elseif (self:GetTargetUnit(info.source) == "pet" and self.db.profile["PET"] == true) then
-				self:DisplayEvent(OUTGOING, text, texture, self.db.profile["PETO"])
+				self:DisplayEvent(OUTGOING, text, texture, self.db.profile["PETO"], info.victim)
 			end
 		end
 	elseif info.type == "drain" and info.attribute == "Health" then
@@ -380,7 +380,7 @@ function EavesDrop:CombatEvent(info)
 			if (self:TrackStat(INCOMING, info)) then
 				text = newhigh..text..newhigh
 			end
-			self:DisplayEvent(INCOMING, "+"..text, texture, self.db.profile["PHEAL"]);
+			self:DisplayEvent(INCOMING, "+"..text, texture, self.db.profile["PHEAL"], info.source ~= ParserLib_SELF and info.source or nil);
 		elseif info.source == ParserLib_SELF then
 			if (text < self.db.profile["HFILTER"]) then return end;
 			if (self.db.profile["OVERHEAL"] == true) then
@@ -392,7 +392,7 @@ function EavesDrop:CombatEvent(info)
 			if (self:TrackStat(OUTGOING, info)) then
 				text = newhigh..text..newhigh
 			end
-			self:DisplayEvent(OUTGOING, text, texture, self.db.profile["THEAL"])
+			self:DisplayEvent(OUTGOING, text, texture, self.db.profile["THEAL"], info.victim)
 		end
 	elseif info.type == "miss" then
 		local miss = getglobal(strupper(info.missType));
@@ -404,21 +404,21 @@ function EavesDrop:CombatEvent(info)
 				else
 					tcolor = "TSPELL";
 				end
-				self:DisplayEvent(OUTGOING, miss, texture, self.db.profile[tcolor])
+				self:DisplayEvent(OUTGOING, miss, texture, self.db.profile[tcolor], info.victim)
 			elseif info.victim == ParserLib_SELF then
-				self:DisplayEvent(INCOMING, miss, texture, self.db.profile["PMISS"])
+				self:DisplayEvent(INCOMING, miss, texture, self.db.profile["PMISS"], info.source)
 			end
 		else
 			if (self:GetTargetUnit(info.victim) == "pet" and self.db.profile["PET"] == true) then
 				if texture==nil then texture = "pet" end
-				self:DisplayEvent(INCOMING, miss, texture, self.db.profile["PETI"])
+				self:DisplayEvent(INCOMING, miss, texture, self.db.profile["PETI"], info.source)
 			end
 		end
 	elseif info.type == "environment" then
 		if (info.amountResist) then text = text.." ("..info.amountResist..")" end;
 		if (info.amountAbsorb) then text = text.." ("..info.amountAbsorb..")" end;
 		if info.victim == ParserLib_SELF then
-			self:DisplayEvent(INCOMING, "-"..text, texture, self:SpellColor(self.db.profile["PSPELL"], info.element))
+			self:DisplayEvent(INCOMING, "-"..text, texture, self:SpellColor(self.db.profile["PSPELL"], info.element), info.attribute)
 		end
 	elseif info.type == "gain" then
 		if (info.victim == ParserLib_SELF) then
@@ -491,15 +491,15 @@ function EavesDrop:CombatPetOutEvent(info)
 			if (info.amountResist) then text = text.." ("..info.amountResist..")" end;
 			if (info.amountBlock) then text = text.." ("..info.amountBlock..")" end;
 			if (info.amountAbsorb) then text = text.." ("..info.amountAbsorb..")" end;
-			self:DisplayEvent(OUTGOING, text, texture, self.db.profile["PETO"])
+			self:DisplayEvent(OUTGOING, text, texture, self.db.profile["PETO"], info.victim)
 	elseif info.type == "miss" then
 		local miss = getglobal(strupper(info.missType));
 		if (self:GetTargetUnit(info.victim) == "pet" and self.db.profile["PET"] == true) then
 			if texture==nil then texture = "pet" end
-			self:DisplayEvent(INCOMING, miss, texture, self.db.profile["PETI"])
+			self:DisplayEvent(INCOMING, miss, texture, self.db.profile["PETI"], info.source)
 		elseif (self:GetTargetUnit(info.source) == "pet" and self.db.profile["PET"] == true) then
 			if texture==nil then texture = "pet" end
-			self:DisplayEvent(OUTGOING, miss, texture, self.db.profile["PETO"])
+			self:DisplayEvent(OUTGOING, miss, texture, self.db.profile["PETO"], info.victim)
 		end
 	elseif info.type == "heal" then
 		if (self:GetTargetUnit(info.victim) == "pet" and self.db.profile["PET"] == true) then
@@ -509,7 +509,7 @@ function EavesDrop:CombatPetOutEvent(info)
 			if (self:TrackStat(INCOMING, info)) then
 				text = newhigh..text..newhigh
 			end
-			self:DisplayEvent(INCOMING, "+"..text, texture, self.db.profile["PETI"]);
+			self:DisplayEvent(INCOMING, "+"..text, texture, self.db.profile["PETI"], info.source ~= ParserLib_SELF and info.source or nil);
 		elseif (self:GetTargetUnit(info.source) == "pet" and self.db.profile["PET"] == true) then
 			if (text < self.db.profile["HFILTER"]) then return end; 
 			if (info.isCrit) then text = critchar..text..critchar end;
@@ -517,12 +517,12 @@ function EavesDrop:CombatPetOutEvent(info)
 			if (self:TrackStat(INCOMING, info)) then
 				text = newhigh..text..newhigh
 			end
-			self:DisplayEvent(OUTGOING,  "+"..text, texture, self.db.profile["PETI"])
+			self:DisplayEvent(OUTGOING,  "+"..text, texture, self.db.profile["PETI"], info.victim)
 		end
 	end
 end
 
-function EavesDrop:DisplayEvent(type, text, texture, color)
+function EavesDrop:DisplayEvent(type, text, texture, color, source)
 	--remove oldest table and create new display event
 	local pEvent = tremove(arrEventData, 1);
 	if (self.db.profile["FLIP"] == true) then type = type * -1 end;
@@ -530,10 +530,19 @@ function EavesDrop:DisplayEvent(type, text, texture, color)
 	pEvent.text = text;
 	pEvent.texture = texture;
 	pEvent.color = color;
+	pEvent.source = source;
 	if (self.db.profile["TIMESTAMP"] == true) then
 		pEvent.tooltipText = string.format('|cffffffff%s|r\n%s', date('%H:%M:%S'), arg1 or '');
 	else
 		pEvent.tooltipText = arg1;
+	end
+	if source then
+		local sourceLine = string.format('|cffffd200%s:|r %s', L["Source"], source);
+		if pEvent.tooltipText ~= nil then
+			pEvent.tooltipText = sourceLine.."\n"..pEvent.tooltipText
+		else
+			pEvent.tooltipText = sourceLine
+		end
 	end
 	if pEvent.text == L["StartCombat"] then
 		if pEvent.tooltipText ~= nil then
