@@ -430,6 +430,7 @@ end
 SC.recentSelfDamage = {} -- [guid] = GetTime() of last hit dealt by the player
 
 function SC:NoteSelfDamage(guid)
+	if not guid then return end
 	self.recentSelfDamage[guid] = GetTime()
 end
 

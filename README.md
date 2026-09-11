@@ -22,7 +22,7 @@ their own projects; this repo doesn't bundle any of them.
 
 | DLL | Project | What it's used for here |
 |---|---|---|
-| `weirdutils.dll` | [WeirdUtils / DPSLog](https://codeberg.org/MarcelineVQ/WeirdUtils/wiki) | **Preferred backend when present.** Backports WotLK's `COMBAT_LOG_EVENT_UNFILTERED` + `CombatLogGetCurrentEventInfo()` — hands over unit *names* directly (no GUID resolution needed), has its own spell-info lookup for icons, and fires buff/debuff/aura events too. Makes the four DLLs below unnecessary, though they still work as a fallback if this one isn't installed. |
+| `WeirdUtils.dll` | [WeirdUtils](https://codeberg.org/MarcelineVQ/WeirdUtils/wiki) | **Preferred backend when present.** An all-in-one utility DLL; its **DPSLog** module backports WotLK's `COMBAT_LOG_EVENT_UNFILTERED` + `CombatLogGetCurrentEventInfo()` — hands over unit *names* directly (no GUID resolution needed), has its own spell-info lookup for icons, and fires buff/debuff/aura events too. Makes the four DLLs below unnecessary, though they still work as a fallback if this one isn't installed. |
 | `nampower.dll` | [nampower](https://github.com/brues-code/nampower) | Fallback backend. Fires structured combat events (real GUIDs + spell IDs) instead of chat text. Used only if DPSLog isn't detected. |
 | `SuperWoWhook.dll` | [SuperWoW](https://github.com/balakethelock/SuperWoW) | Fallback backend support. Lets `UnitName()`/etc. accept a raw GUID directly, and resolves spell IDs to name/icon via `SpellInfo()`. Used only if DPSLog isn't detected. |
 | `ClassicAPI.dll` | [ClassicAPI](https://github.com/brues-code/ClassicAPI) | Fallback backend support. Backports a modern-style `GetSpellInfo(spellId)`; preferred over SuperWoW's `SpellInfo()` when both are present. Used only if DPSLog isn't detected. |
@@ -30,7 +30,7 @@ their own projects; this repo doesn't bundle any of them.
 | `VanillaHelpers.dll` | [VanillaHelpers](https://github.com/isfir/VanillaHelpers) | Detected and reported only — texture/minimap/model helpers, no combat or spell API, so nothing for a combat-log addon to hook. |
 
 **To get the upgraded data feed, install *either*:**
-- `weirdutils.dll` on its own (simplest — it's fully self-contained), **or**
+- `WeirdUtils.dll` on its own (simplest — it's an all-in-one DLL, DPSLog included), **or**
 - `nampower.dll` + either `SuperWoWhook.dll` or `ClassicAPI.dll`
 
 Without one of those two combinations, `EavesDropSuperCombat.lua` prints one
@@ -101,7 +101,7 @@ EavesDrop: SuperCombat inactive (needs DPSLog, or nampower + SuperWoW/ClassicAPI
 
 1. Unzip so you end up with `Interface/AddOns/EavesDrop/...` (containing
    `EavesDrop.toc`).
-2. If you want the upgraded data feed, install `dpslog.dll` **or**
+2. If you want the upgraded data feed, install `WeirdUtils.dll` **or**
    `nampower.dll` + (`SuperWoWhook.dll` or `ClassicAPI.dll`) per their own
    install instructions (native DLLs, not addon folders) — see the table
    above for links. Not required for the hover-tooltip source line, which
@@ -117,7 +117,10 @@ EavesDrop: SuperCombat inactive (needs DPSLog, or nampower + SuperWoW/ClassicAPI
   that never dies while tracked (it resets, you leave the area, etc.) leaves
   a small stale entry for the rest of the session — not dangerous, but not
   swept up either. The DPSLog path doesn't have this issue, since
-  `PARTY_KILL` already names the killer.
+  `PARTY_KILL` already names the killer. (Fixed separately: nampower
+  occasionally reports a `SPELL_DAMAGE_EVENT_SELF` with no target GUID at
+  all — this used to crash the event handler outright; it's now skipped
+  safely instead.)
 - **DPSLog and nampower are not run together.** If both are installed,
   DPSLog is used exclusively and nampower's events are simply never
   registered — running both pipelines at once would double-process every
