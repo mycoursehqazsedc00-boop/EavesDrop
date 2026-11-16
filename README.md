@@ -1,131 +1,53 @@
-# EavesDrop (SuperCombat fork)
+# EavesDrop (SuperCombat Fork for WoW 1.12 / Turtle WoW)
 
-A fork of [laytya/EavesDrop](https://github.com/laytya/EavesDrop) — a 1.12
-combat log that shows hits, spells, misses, heals, buffs/debuffs, power
-gains, and kills as fading icon+text lines, split into incoming/outgoing/misc
-columns.
+A fork of [laytya/EavesDrop](https://github.com/laytya/EavesDrop) — a lightweight combat log that displays hits, spells, misses, heals, buffs/debuffs, power gains, and kills as fading icon+text lines split into incoming, outgoing, and misc columns.
 
-This fork adds one optional file, `EavesDropSuperCombat.lua`, which — only if
-you also run certain native client mods — replaces the addon's chat-log
-parsing with a GUID/spellID-based data feed for more accurate output, and
-always adds a "who did this come from" line to the hover tooltip on every
-line. If you don't have any of the mods below installed, the data-feed
-upgrade doesn't activate but the hover-tooltip source line still works, since
-that part reads the same data the stock chat-log parser already extracts.
+## Client Mods Used
 
-## DLLs this addon can use (all optional)
-
-These are native client-side mods, not addons — they get loaded by your
-client (typically via `dlls.txt` and a loader like Nampower's own loader or
-`VanillaFixes`), not by putting them in `Interface/AddOns`. Get them from
-their own projects; this repo doesn't bundle any of them.
-
-| DLL | Project | What it's used for here |
+| Mod | Purpose in this addon | Required? |
 |---|---|---|
-| `WeirdUtils.dll` | [WeirdUtils](https://codeberg.org/MarcelineVQ/WeirdUtils/wiki) | **Preferred backend when present.** An all-in-one utility DLL; its **DPSLog** module backports WotLK's `COMBAT_LOG_EVENT_UNFILTERED` + `CombatLogGetCurrentEventInfo()` — hands over unit *names* directly (no GUID resolution needed), has its own spell-info lookup for icons, and fires buff/debuff/aura events too. Makes the four DLLs below unnecessary, though they still work as a fallback if this one isn't installed. |
-| `nampower.dll` | [nampower](https://github.com/brues-code/nampower) | Fallback backend. Fires structured combat events (real GUIDs + spell IDs) instead of chat text. Used only if DPSLog isn't detected. |
-| `SuperWoWhook.dll` | [SuperWoW](https://github.com/balakethelock/SuperWoW) | Fallback backend support. Lets `UnitName()`/etc. accept a raw GUID directly, and resolves spell IDs to name/icon via `SpellInfo()`. Used only if DPSLog isn't detected. |
-| `ClassicAPI.dll` | [ClassicAPI](https://github.com/brues-code/ClassicAPI) | Fallback backend support. Backports a modern-style `GetSpellInfo(spellId)`; preferred over SuperWoW's `SpellInfo()` when both are present. Used only if DPSLog isn't detected. |
-| `UnitXP_SP3.dll` | [UnitXP_SP3](https://codeberg.org/konaka/UnitXP_SP3) | Detected and reported only — mainly the launcher/host for the DLLs above; has no combat-log API of its own that this addon uses. |
-| `VanillaHelpers.dll` | [VanillaHelpers](https://github.com/isfir/VanillaHelpers) | Detected and reported only — texture/minimap/model helpers, no combat or spell API, so nothing for a combat-log addon to hook. |
+| WeirdUtils (`dpslog`) | **Preferred backend:** WotLK-style `COMBAT_LOG_EVENT_UNFILTERED` (9-arg header) + `GetSpellInfo(spellId)` for spell icons and unit names | Optional |
+| ClassicAPI | **Secondary backend / support:** Modern `COMBAT_LOG_EVENT_UNFILTERED` (11-arg header), `UnitGUID()`, and `GetSpellInfo(spellId)` | Optional |
+| Nampower | **Fallback backend:** Structured GUID/spellID combat events (`SPELL_DAMAGE_EVENT_*`, `AUTO_ATTACK_*`, `SPELL_MISS_*`, `SPELL_HEAL_*`, `SPELL_ENERGIZE_*`, `UNIT_DIED`) and `GetUnitGUID()` | Optional |
+| SuperWoW | **Fallback backend support:** `UnitName(guid)`, `UnitExists()` GUID return, and `SpellInfo(spellId)` | Optional |
 
-**To get the upgraded data feed, install *either*:**
-- `WeirdUtils.dll` on its own (simplest — it's an all-in-one DLL, DPSLog included), **or**
-- `nampower.dll` + either `SuperWoWhook.dll` or `ClassicAPI.dll`
+*(The addon works without any client mods by falling back to stock ParserLib chat-log parsing.)*
 
-Without one of those two combinations, `EavesDropSuperCombat.lua` prints one
-line at login saying the data-feed upgrade is inactive; the hover-tooltip
-source line still works regardless, off the stock chat-log data.
+## Features
 
-## What's different from stock EavesDrop
+- **Scrolling Incoming / Outgoing / Misc Combat Feed:** Displays melee, spell, periodic, environmental damage, misses, heals, overhealing, power gains, buffs/debuffs/fades, and kills.
+- **Hover Tooltips with `Source:` Line:** Displays the attacker, target, healer, or environmental hazard source on hover when "Display details in tooltip" is enabled.
+- **History Frame:** Tracks highest normal and critical hits/heals per skill and flags new highs with `!`.
+- **Configurable Layout & Colors:** Customizable line count, height, width, font size, fade time, school colors, and side-flipping.
 
-| | Stock | This fork, DPSLog active | This fork, nampower path active (no DPSLog) |
-|---|---|---|---|
-| Data source | Re-parses localized chat strings | Reads DPSLog's structured GUID/name events directly | Reads nampower's structured GUID/spellID events directly |
-| Identifying who's involved | Guesses by matching the name in the string against your party/raid roster | Given directly by DPSLog (`srcName`/`dstName`) — not limited to your group | Resolves the real GUID via SuperWoW — not limited to your group |
-| Spell icon | Looks up the *localized spell name string* in Babble-Spell's table | Looks up the icon straight from the spell ID (DPSLog's own resolver) | Looks up the icon straight from the spell ID via ClassicAPI/SuperWoW |
-| Non-English clients | Warns of "errors or strange behavior" — string-matching against localized text | Not exposed to that problem | Not exposed to that problem |
-| "You have slain X" | Read from the death chat line | `PARTY_KILL` gives a real killer GUID — exact, no guessing | `UNIT_DIED` has no killer field — approximated by remembering who you (or your pet) last hit in the previous 5 seconds |
-| Buffs, debuffs, fades | Chat-log parsing | **Also upgraded** — DPSLog's aura events replace this too | Unchanged — nampower has no equivalent, so this stays on stock chat-log parsing |
-| XP, reputation, honor, skill-ups | Chat-log parsing | Unchanged (neither backend covers these) | Unchanged |
-| Hover tooltip | Whatever the raw chat-log sentence happened to say (only if the "display details in tooltip" option is on) | Adds a dedicated `Source: <name>` line to every hit/miss/heal/environmental-damage line, regardless of backend | Same |
+## What Was Added / Improved
 
-The addon's frame, options menu, colors, filters, profiles, and
-history/"new high" tracking are all unchanged in every case above.
+- **Fixed outgoing damage not displaying on ClassicAPI / WeirdUtils / Nampower:**
+  - Distinguished `WeirdUtils` (`dpslog`) from `ClassicAPI`'s `CombatLogGetCurrentEventInfo()` (9-arg header vs 11-arg header) so `COMBAT_LOG_EVENT_UNFILTERED` no longer drops all combat events when ClassicAPI is loaded without DPSLog.
+  - Fixed `SC:RefreshSelfGUIDs()` to resolve `playerGUID` and `petGUID` via `UnitGUID()` (ClassicAPI), `GetUnitGUID()` (Nampower), `UnitExists()` (SuperWoW), or `COMBATLOG_OBJECT_AFFILIATION_MINE` flags (standalone DPSLog).
+  - Fixed Lua 5.0 incompatibilities in `EavesDropSuperCombat.lua` (`math.mod` instead of `%`, direct local indexing instead of 3-arg `unpack(t, i, j)`).
+  - Fixed `SchoolConstFromMask()` for DPSLog/ClassicAPI bitmask spell schools (`1, 2, 4, 8, 16, 32, 64`) vs Nampower 0-based school indices (`0..6`).
+  - Guarded `TrackStat` against `nil` skill keys so unknown spell IDs never abort event display.
+- **Improved performance & reliability:**
+  - Zero-table unpack in `OnCombatLogEvent()` to avoid per-event garbage collection in raids.
+  - Added spell icons on spell misses, glancing/crushing indicators on `SWING_DAMAGE`, self-inflicted damage routing to incoming, and periodic pruning of `recentSelfDamage`.
+  - Added `/edsc` (`status`, `trace`, `test`) diagnostic slash commands.
+- **Fixed stock EavesDrop bugs:**
+  - Fixed swapped `PETI` / `PETO` color getters/setters in `options.lua`.
+  - Fixed inverted `FADEFRAME` toggle in `options.lua`.
+  - Fixed `GetDefaultConfig()` key names (`GAIN`, `BUFF`, `DEBUFF` instead of `GAINS`, `BUFFS`, `DEBUFFS`).
+  - Fixed accidental global `outtexture` in `EavesDrop.lua` (`UpdateEvents` and `ResetEvents`) and self-target recognition in `GetTargetUnit()`.
 
-### Hovering a line now shows who it came from
+## Usage
 
-Every hit, miss, heal, and environmental-damage line now adds a `Source:`
-line to its hover tooltip — the attacker on incoming lines, the target on
-outgoing lines, the healer/patient on heals, the hazard type ("Fire",
-"Drowning", ...) on environmental damage. This works with the stock
-chat-log pipeline too, not just with the mods above, since the underlying
-data (`info.source`/`info.victim`) was already being parsed out — it just
-wasn't being surfaced before.
+- `/EavesDrop` — Open options menu (or right-click the EavesDrop tab; Shift+right-click for Waterfall panel).
+- `/edsc` — Print active SuperCombat backend, detected mods, and `playerGUID`/`petGUID`.
+- `/edsc trace` — Toggle live SuperCombat event debug tracing in chat.
+- `/edsc test` — Display sample outgoing, incoming, and kill test lines.
+- Mouse wheel over the frame to scroll history (Shift+wheel to jump to top/bottom); Shift+click a line to copy its tooltip to chat.
 
-**This requires the "Display details in tooltip" option to be turned on**
-(right-click the tab → Misc.) — that's the addon's existing master switch
-for whether hovering shows anything at all; this fork doesn't override it.
+## Credits & License
 
-## Commands
-
-| Command | Effect |
-|---|---|
-| `/EavesDrop` | Opens the options menu (same as right-clicking the tab) |
-| Left-click the tab | Drag the frame |
-| Right-click the tab | Open options |
-| Shift-right-click the tab | Open the Waterfall options panel |
-| Mouse wheel over the frame | Scroll up/down through recent events |
-| Shift + mouse wheel | Jump to top/bottom of the scroll history |
-| Shift + left/right-click a line | Copy that line's tooltip text to chat |
-
-There is no separate slash command for SuperCombat — it's fully automatic.
-At login it prints one status line to your chat frame naming which backend
-and mods it detected, e.g.:
-
-```
-EavesDrop: SuperCombat active - DPSLog + UnitXP_SP3
-```
-```
-EavesDrop: SuperCombat active - nampower + ClassicAPI + SuperWoW
-EavesDrop: buffs/debuffs/fades still use stock chat-log parsing (no DPSLog detected).
-```
-
-or, with none of the mods:
-
-```
-EavesDrop: SuperCombat inactive (needs DPSLog, or nampower + SuperWoW/ClassicAPI). Using stock chat-log parsing.
-```
-
-## Install
-
-1. Unzip so you end up with `Interface/AddOns/EavesDrop/...` (containing
-   `EavesDrop.toc`).
-2. If you want the upgraded data feed, install `WeirdUtils.dll` **or**
-   `nampower.dll` + (`SuperWoWhook.dll` or `ClassicAPI.dll`) per their own
-   install instructions (native DLLs, not addon folders) — see the table
-   above for links. Not required for the hover-tooltip source line, which
-   works either way.
-3. Launch WoW, log in. Right-click the EavesDrop tab for options.
-
-## Known limitations
-
-- **nampower path only:** the kill-credit heuristic
-  (`SC.recentSelfDamage` in `EavesDropSuperCombat.lua`) tracks GUIDs you've
-  recently damaged so it can attribute a later `UNIT_DIED` event to you. An
-  entry is only cleared when a matching death fires, so damaging something
-  that never dies while tracked (it resets, you leave the area, etc.) leaves
-  a small stale entry for the rest of the session — not dangerous, but not
-  swept up either. The DPSLog path doesn't have this issue, since
-  `PARTY_KILL` already names the killer. (Fixed separately: nampower
-  occasionally reports a `SPELL_DAMAGE_EVENT_SELF` with no target GUID at
-  all — this used to crash the event handler outright; it's now skipped
-  safely instead.)
-- **DPSLog and nampower are not run together.** If both are installed,
-  DPSLog is used exclusively and nampower's events are simply never
-  registered — running both pipelines at once would double-process every
-  event.
-- Neither backend threads a source name through buff/debuff/gain lines the
-  way it does for hits/misses/heals (no clean "who cast this" field is
-  available for those event types), so their tooltip still falls back to
-  whatever the stock chat-log line said, same as before this fork.
+- Original addon: [laytya/EavesDrop](https://github.com/laytya/EavesDrop) (original idea by Bant, Grayhoof).
+- SuperCombat & 1.12/Turtle WoW fixes: Fork contributors.
+- License: Same as original addon.

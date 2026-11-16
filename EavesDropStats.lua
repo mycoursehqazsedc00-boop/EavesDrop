@@ -44,6 +44,7 @@ function EavesDrop:TrackStat(type, info)
 	--fix parselib keys to be strings
 	if key == ParserLib_MELEE then key = MELEE_ATTACK end;
 	if key == ParserLib_DAMAGESHIELD then key = CHAT_MSG_SPELL_DAMAGESHIELDS_ON_SELF end;
+	if not key then key = UNKNOWN end;
 	--set crit type
 	if (info.isCrit) then
 		critkey = CRIT;

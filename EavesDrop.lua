@@ -571,7 +571,7 @@ end
 
 function EavesDrop:UpdateEvents()
 	local i, key, value
-	local frame, text, intexture, outexture;
+	local frame, text, intexture, outtexture;
 	local start, finish
 	local delay = self.db.profile["FADETIME"] + (4 * arrSize);
 	start = arrMaxSize-scroll;
@@ -653,7 +653,7 @@ function EavesDrop:UpdateEvents()
 end
 
 function EavesDrop:ResetEvents()
-	local i, frame, text, intexture, outexture;
+	local i, frame, text, intexture, outtexture;
 	for i=1,20 do
 		frame = getglobal("EavesDropEvent"..i);
 		text = getglobal("EavesDropEvent"..i.."EventText");
@@ -805,7 +805,7 @@ end
 --Return the unit if for a given  target
 function EavesDrop:GetTargetUnit(target)
 	local unit;
-	if (target == "player") then
+	if (target == "player" or target == UnitName("player") or target == ParserLib_SELF) then
 		return "player";
 	end
 	if (target == UnitName('pet')) then

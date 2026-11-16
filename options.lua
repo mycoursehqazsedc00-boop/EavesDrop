@@ -291,10 +291,10 @@ function EavesDrop:SetupOptions()
 						    desc = L["ICPetD"],
 						    order = 8,
 						    get = function()
-						        return self.db.profile["PETO"].r, self.db.profile["PETO"].g, self.db.profile["PETO"].b
+						        return self.db.profile["PETI"].r, self.db.profile["PETI"].g, self.db.profile["PETI"].b
 						    end,
 						    set = function(r, g, b)
-						        self.db.profile["PETO"].r, self.db.profile["PETO"].g, self.db.profile["PETO"].b = r, g, b
+						        self.db.profile["PETI"].r, self.db.profile["PETI"].g, self.db.profile["PETI"].b = r, g, b
 						    end
 							},
 						},
@@ -347,10 +347,10 @@ function EavesDrop:SetupOptions()
 						    desc = L["OCPetD"],
 						    order = 4,
 						    get = function()
-						        return self.db.profile["PETI"].r, self.db.profile["PETI"].g, self.db.profile["PETI"].b
+						        return self.db.profile["PETO"].r, self.db.profile["PETO"].g, self.db.profile["PETO"].b
 						    end,
 						    set = function(r, g, b)
-						        self.db.profile["PETI"].r, self.db.profile["PETI"].g, self.db.profile["PETI"].b = r, g, b
+						        self.db.profile["PETO"].r, self.db.profile["PETO"].g, self.db.profile["PETO"].b = r, g, b
 						    end
 							},
 						},
@@ -572,7 +572,7 @@ function EavesDrop:SetupOptions()
 				    end,
 				    set = function(v)
 				        self.db.profile["FADEFRAME"] = v
-				        if v ~= true then
+				        if v == true then
 				        	self:HideFrame();
 				        else
 				        	self:ShowFrame();
@@ -747,9 +747,9 @@ function EavesDrop:GetDefaultConfig()
 		["REP"] = true,
 		["SKILL"] = false,
 		["COMBAT"] = true,
-		["GAINS"] = false,
-		["BUFFS"] = false,
-		["DEBUFFS"] = false,
+		["GAIN"] = false,
+		["BUFF"] = false,
+		["DEBUFF"] = false,
 		["FADE"] = false,
 		["PET"] = false,
 		["SCROLLBUTTON"] = false,
