@@ -66,6 +66,9 @@ function EavesDrop:TrackStat(type, info)
 		sort_table = nil;
 	end
 	--see if its a higher event
+	if info.icon and not self.db.char.Stats[type][info.type][key].icon then
+		self.db.char.Stats[type][info.type][key].icon = info.icon;
+	end
 	if ((self.db.char.Stats[type][info.type][key][critkey].amount == nil) or (info.amount > self.db.char.Stats[type][info.type][key][critkey].amount)) then
 		self.db.char.Stats[type][info.type][key][critkey].amount = info.amount;
 		self.db.char.Stats[type][info.type][key][critkey].time = geteventtime(arg1);
@@ -107,7 +110,7 @@ function EavesDrop:ScrollBar_Update()
 			for j=2,idx do
 				k,key = next(sort_table, k)
 			end
-			texturestr = BS:GetSpellIcon(key);
+			texturestr = BS:GetSpellIcon(key) or current_table[key].icon;
 			texture:SetTexture(texturestr);
 			texture:SetTexCoord(.1,.9,.1,.9);
 			skill:SetText(key);

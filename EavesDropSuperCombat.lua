@@ -246,14 +246,14 @@ end
 -- ---------------------------------------------------------------
 
 function SC:Show(direction, text, texture, color, statInfo, source)
+	-- Clear leftover native event arg1 before TrackStat/DisplayEvent so
+	-- raw GUIDs/timestamps aren't saved in History tooltips or event tooltips.
+	arg1 = nil
 	if statInfo then
 		if EavesDrop:TrackStat(direction, statInfo) then
 			text = "|cffffff00!|r" .. text .. "|cffffff00!|r"
 		end
 	end
-	-- Clear leftover native event arg1 so DisplayEvent doesn't fold
-	-- raw GUIDs/numbers into the tooltip alongside "Source: X".
-	arg1 = nil
 	EavesDrop:DisplayEvent(direction, text, texture, color, source)
 end
 
@@ -285,7 +285,7 @@ function SC:OnSpellDamage(isSelfEvent, targetGuid, casterGuid, spellId, amount, 
 
 	local element = self:SchoolConst(spellSchool)
 	local skillName = name or ("Spell #" .. tostring(spellId or 0))
-	local statInfo = { type = "hit", skill = skillName, amount = amount, isCrit = isCrit, element = element }
+	local statInfo = { type = "hit", skill = skillName, amount = amount, isCrit = isCrit, element = element, icon = icon }
 
 	if outgoing then
 		self:Show(OUTGOING, text, icon, EavesDrop:SpellColor(db["TSPELL"], element), statInfo, self:NameFromGUID(targetGuid))
@@ -411,7 +411,7 @@ function SC:OnHealBySelf(targetGuid, casterGuid, spellId, amount, critical, peri
 	text = "+" .. text
 	if db["HEALERID"] == true then text = (self:NameFromGUID(targetGuid) or "?") .. ": " .. text end
 
-	local statInfo = { type = "heal", skill = name or ("Spell #" .. tostring(spellId or 0)), amount = amount, isCrit = isCrit }
+	local statInfo = { type = "heal", skill = name or ("Spell #" .. tostring(spellId or 0)), amount = amount, isCrit = isCrit, icon = icon }
 	self:Show(OUTGOING, text, icon, db["THEAL"], statInfo, self:NameFromGUID(targetGuid))
 end
 
@@ -429,7 +429,7 @@ function SC:OnHealOnSelf(targetGuid, casterGuid, spellId, amount, critical, peri
 	if db["HEALERID"] == true and isOther then
 		text = text .. " (" .. (self:NameFromGUID(casterGuid) or "?") .. ")"
 	end
-	local statInfo = { type = "heal", skill = name or ("Spell #" .. tostring(spellId or 0)), amount = amount, isCrit = isCrit }
+	local statInfo = { type = "heal", skill = name or ("Spell #" .. tostring(spellId or 0)), amount = amount, isCrit = isCrit, icon = icon }
 	self:Show(INCOMING, "+" .. text, icon, db["PHEAL"], statInfo, isOther and self:NameFromGUID(casterGuid) or nil)
 end
 
@@ -519,7 +519,7 @@ function SC:DL_Damage(srcGUID, srcName, dstGUID, dstName, spellId, spellName, sc
 	local element = (not isMelee) and self:SchoolConstFromMask(school)
 	local resolvedName, icon = self:SpellNameIcon(spellId)
 	local skillName = isMelee and ParserLib_MELEE or (spellName or resolvedName or ("Spell #" .. tostring(spellId or 0)))
-	local statInfo = { type = "hit", skill = skillName, amount = amount, isCrit = isCrit, element = element }
+	local statInfo = { type = "hit", skill = skillName, amount = amount, isCrit = isCrit, element = element, icon = icon }
 
 	if outgoing then
 		self:Show(OUTGOING, text, icon, isMelee and db["TMELEE"] or EavesDrop:SpellColor(db["TSPELL"], element), statInfo, self:DL_Name(dstGUID, dstName))
@@ -567,7 +567,7 @@ function SC:DL_Heal(srcGUID, srcName, dstGUID, dstName, spellId, spellName, amou
 	local db = EavesDrop.db.profile
 	if amount < db["HFILTER"] then return end
 	local resolvedName, icon = self:SpellNameIcon(spellId)
-	local statInfo = { type = "heal", skill = spellName or resolvedName or ("Spell #" .. tostring(spellId or 0)), amount = amount, isCrit = isCrit }
+	local statInfo = { type = "heal", skill = spellName or resolvedName or ("Spell #" .. tostring(spellId or 0)), amount = amount, isCrit = isCrit, icon = icon }
 
 	if self.playerGUID and dstGUID == self.playerGUID then
 		local text = tostring(amount)
@@ -675,17 +675,17 @@ function SC:OnCombatLogEvent()
 
 	if sub == "SWING_DAMAGE" then
 		-- p1=amount, p2=overkill, p3=school, p4=resisted, p5=blocked, p6=absorbed, p7=critical, p8=glancing, p9=crushing
-		self:DL_Damage(srcGUID, srcName, dstGUID, dstName, nil, nil, p3, p1, p4, p5, p6, p7 ~= nil, p8 ~= nil, p9 ~= nil, true)
+		self:DL_Damage(srcGUID, srcName, dstGUID, dstName, nil, nil, p3, p1, p4, p5, p6, (p7 and true or false), (p8 and true or false), (p9 and true or false), true)
 	elseif sub == "SPELL_DAMAGE" or sub == "RANGE_DAMAGE" or sub == "SPELL_PERIODIC_DAMAGE" or sub == "DAMAGE_SHIELD" or sub == "DAMAGE_SPLIT" then
 		-- p1=spellId, p2=spellName, p3=spellSchool, p4=amount, p5=overkill, p6=school, p7=resisted, p8=blocked, p9=absorbed, p10=critical
-		self:DL_Damage(srcGUID, srcName, dstGUID, dstName, p1, p2, p6 or p3, p4, p7, p8, p9, p10 ~= nil, false, false, false)
+		self:DL_Damage(srcGUID, srcName, dstGUID, dstName, p1, p2, p6 or p3, p4, p7, p8, p9, (p10 and true or false), false, false, false)
 	elseif sub == "SWING_MISSED" then
 		self:DL_Miss(srcGUID, srcName, dstGUID, dstName, nil, p1, true)
 	elseif sub == "SPELL_MISSED" or sub == "RANGE_MISSED" or sub == "SPELL_PERIODIC_MISSED" or sub == "DAMAGE_SHIELD_MISSED" then
 		self:DL_Miss(srcGUID, srcName, dstGUID, dstName, p1, p4, false)
 	elseif sub == "SPELL_HEAL" or sub == "SPELL_PERIODIC_HEAL" then
 		-- p1=spellId, p2=spellName, p3=spellSchool, p4=amount, p5=overhealing, p6=absorbed, p7=critical
-		self:DL_Heal(srcGUID, srcName, dstGUID, dstName, p1, p2, p4, p5, p7 ~= nil)
+		self:DL_Heal(srcGUID, srcName, dstGUID, dstName, p1, p2, p4, p5, (p7 and true or false))
 	elseif sub == "SPELL_ENERGIZE" or sub == "SPELL_PERIODIC_ENERGIZE" then
 		-- p1=spellId, p2=spellName, p3=spellSchool, p4=amount, p5=powerType
 		self:DL_Energize(dstGUID, p1, p4, p5)
@@ -748,7 +748,9 @@ function SC:InitCombatLogBackend(label)
 	f:RegisterEvent("PLAYER_ENTERING_WORLD")
 	f:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 	f:SetScript("OnEvent", function()
-		if event == "UNIT_PET" or event == "UNIT_PET_GUID" or event == "PLAYER_ENTERING_WORLD" then
+		if event == "UNIT_PET" then
+			if arg1 == "player" then SC:RefreshSelfGUIDs() end
+		elseif event == "UNIT_PET_GUID" or event == "PLAYER_ENTERING_WORLD" then
 			SC:RefreshSelfGUIDs()
 		elseif event == "COMBAT_LOG_EVENT_UNFILTERED" then
 			SC:OnCombatLogEvent()
@@ -784,7 +786,9 @@ function SC:InitNampower()
 	f:RegisterEvent("UNIT_DIED")
 
 	f:SetScript("OnEvent", function()
-		if event == "UNIT_PET" or event == "UNIT_PET_GUID" or event == "PLAYER_ENTERING_WORLD" then
+		if event == "UNIT_PET" then
+			if arg1 == "player" then SC:RefreshSelfGUIDs() end
+		elseif event == "UNIT_PET_GUID" or event == "PLAYER_ENTERING_WORLD" then
 			SC:RefreshSelfGUIDs()
 		elseif event == "SPELL_DAMAGE_EVENT_SELF" then
 			traceMsg("SPELL_DAMAGE_EVENT_SELF target=" .. tostring(arg1) .. " spell=" .. tostring(arg3) .. " amt=" .. tostring(arg4))

@@ -10,6 +10,7 @@ A fork of [laytya/EavesDrop](https://github.com/laytya/EavesDrop) — a lightwei
 | ClassicAPI | **Secondary backend / support:** Modern `COMBAT_LOG_EVENT_UNFILTERED` (11-arg header), `UnitGUID()`, and `GetSpellInfo(spellId)` | Optional |
 | Nampower | **Fallback backend:** Structured GUID/spellID combat events (`SPELL_DAMAGE_EVENT_*`, `AUTO_ATTACK_*`, `SPELL_MISS_*`, `SPELL_HEAL_*`, `SPELL_ENERGIZE_*`, `UNIT_DIED`) and `GetUnitGUID()` | Optional |
 | SuperWoW | **Fallback backend support:** `UnitName(guid)`, `UnitExists()` GUID return, and `SpellInfo(spellId)` | Optional |
+| **CombatHub** | Optional shared combat event coordinator (`EavesDrop_CombatHub.lua`) that filters out non-self/non-pet `*_OTHER` events at the hub | Optional |
 
 *(The addon works without any client mods by falling back to stock ParserLib chat-log parsing.)*
 
