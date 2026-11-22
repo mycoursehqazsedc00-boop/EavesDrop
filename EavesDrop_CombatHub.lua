@@ -10,7 +10,7 @@ if not CombatHub or type(CombatHub.OnPostLogin) ~= "function" then
 end
 
 CombatHub:OnPostLogin(function()
-    local SC = getglobal("EavesDropSuperCombat")
+    local SC = EavesDrop and EavesDrop.SuperCombat
     if not SC or not SC.frame or not SC.backend then return end
 
     local f = SC.frame
