@@ -562,15 +562,14 @@
 	<Button name="EavesDropHistoryButton" inherits="EavesDropHistoryButtonTemplate" parent="EavesDropTab">
 		<Anchors>
 			<Anchor point="BOTTOMRIGHT" relativeTo="EavesDropFrame" relativePoint="TOPRIGHT">
-				<Offset x="-4" y="-2"/>
+				<Offset>
+					<AbsDimension x="-4" y="-2"/>
+				</Offset>
 			</Anchor>
 		</Anchors>
 		<NormalTexture file="Interface\Icons\INV_Jewelry_Talisman_08"/>
 		<PushedTexture file="Interface\Icons\INV_Jewelry_Talisman_08"/>
 		<Scripts>
-			<OnLoad>
-				this:SetAlpha(0);
-			</OnLoad>
 			<OnClick>
 				if (not EavesDropHistoryFrame:IsShown()) then 
 					EavesDropHistoryFrame:Show();
@@ -824,10 +823,14 @@
 				</Anchors>
 			</Button>
 			<Button name="$parentReset" inherits="UIPanelButtonTemplate" text="Reset">
-				<Size x="50" y="20"/>
+				<Size>
+					<AbsDimension x="50" y="20"/>
+				</Size>
 				<Anchors>
 					<Anchor point="BOTTOMLEFT">
-						<Offset x="6" y="6"/>
+						<Offset>
+							<AbsDimension x="6" y="6"/>
+						</Offset>
 					</Anchor>
 				</Anchors>
 				<Scripts>

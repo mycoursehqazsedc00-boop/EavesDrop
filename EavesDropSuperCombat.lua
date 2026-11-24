@@ -172,20 +172,29 @@ end
 function SC:NameFromGUID(guid)
 	if not guid or guid == "0x0000000000000000" then return nil end
 	if guid == self.playerGUID then return ParserLib_SELF end
-	if self.hasSuperWoW then
+	if self.hasSuperWoW or self.hasNampower then
 		local ok, name = pcall(UnitName, guid)
-		if ok and name then return name end
+		if ok and name and name ~= "" and name ~= UNKNOWNOBJECT and name ~= "Unknown" then
+			self:CacheGUIDName(guid, name)
+			return name
+		end
 	end
 	if self.guidNameCache[guid] then
 		return self.guidNameCache[guid]
 	end
 	if UnitExists("target") and self:GetUnitGUIDSafe("target") == guid then
 		local name = UnitName("target")
-		if name then self:CacheGUIDName(guid, name); return name end
+		if name and name ~= "" and name ~= UNKNOWNOBJECT and name ~= "Unknown" then
+			self:CacheGUIDName(guid, name)
+			return name
+		end
 	end
 	if UnitExists("mouseover") and self:GetUnitGUIDSafe("mouseover") == guid then
 		local name = UnitName("mouseover")
-		if name then self:CacheGUIDName(guid, name); return name end
+		if name and name ~= "" and name ~= UNKNOWNOBJECT and name ~= "Unknown" then
+			self:CacheGUIDName(guid, name)
+			return name
+		end
 	end
 	return guid
 end
@@ -320,7 +329,9 @@ function SC:OnAutoAttack(isSelfEvent, attackerGuid, targetGuid, totalDamage, hit
 	local petIn    = (not incoming) and (self.petGUID ~= nil and targetGuid == self.petGUID) and db["PET"]
 	if not (outgoing or incoming or petOut or petIn) then return end
 
-	if band(hitInfo, HITINFO_MISS) ~= 0 or VICTIMSTATE_NAMES[victimState] then
+	local isMiss = (band(hitInfo, HITINFO_MISS) ~= 0)
+	local isFullVictimState = (VICTIMSTATE_NAMES[victimState] ~= nil) and (victimState ~= 5 or totalDamage == 0)
+	if isMiss or isFullVictimState then
 		local missWord = VICTIMSTATE_NAMES[victimState] and getglobal(VICTIMSTATE_NAMES[victimState]) or MISS
 		if outgoing then
 			self:Show(OUTGOING, missWord, nil, db["TMELEE"], nil, self:NameFromGUID(targetGuid))
@@ -379,12 +390,15 @@ function SC:OnSpellMiss(isSelfEvent, casterGuid, targetGuid, spellId, missInfo)
 
 	local outgoing = isSelfEvent
 	local incoming = (not isSelfEvent) and (self.playerGUID ~= nil and targetGuid == self.playerGUID)
+	local petOut   = (not isSelfEvent) and (self.petGUID ~= nil and casterGuid == self.petGUID) and db["PET"]
 	local petIn    = (not isSelfEvent) and (self.petGUID ~= nil and targetGuid == self.petGUID) and db["PET"]
 
 	if outgoing then
 		self:Show(OUTGOING, miss, icon, db["TSPELL"], nil, self:NameFromGUID(targetGuid))
 	elseif incoming then
 		self:Show(INCOMING, miss, icon, db["PMISS"], nil, self:NameFromGUID(casterGuid))
+	elseif petOut then
+		self:Show(OUTGOING, miss, icon or "pet", db["PETO"], nil, self:NameFromGUID(targetGuid))
 	elseif petIn then
 		self:Show(INCOMING, miss, icon or "pet", db["PETI"], nil, self:NameFromGUID(casterGuid))
 	end
@@ -603,6 +617,36 @@ function SC:DL_Energize(dstGUID, spellId, amount, powerType)
 	self:Show(INCOMING, amount .. " " .. powerName, icon, db["PGAIN"])
 end
 
+function SC:DL_DrainLeech(srcGUID, srcName, dstGUID, dstName, spellId, spellName, school, amount, powerType, extraAmount, isLeech)
+	amount = tonumber(amount) or 0
+	extraAmount = tonumber(extraAmount) or 0
+	powerType = tonumber(powerType)
+	local db = EavesDrop.db.profile
+	local resolvedName, icon = self:SpellNameIcon(spellId)
+	local element = self:SchoolConstFromMask(school)
+
+	if powerType == -2 then
+		if self.playerGUID and srcGUID == self.playerGUID and dstGUID ~= self.playerGUID then
+			self:Show(OUTGOING, tostring(amount), icon, EavesDrop:SpellColor(db["TSPELL"], element), nil, self:DL_Name(dstGUID, dstName))
+		elseif self.playerGUID and dstGUID == self.playerGUID then
+			self:Show(INCOMING, "-" .. tostring(amount), icon, EavesDrop:SpellColor(db["PSPELL"], element), nil, self:DL_Name(srcGUID, srcName))
+		end
+	end
+
+	if isLeech and self.playerGUID and srcGUID == self.playerGUID and extraAmount > 0 then
+		if powerType == -2 then
+			if extraAmount >= (db["HFILTER"] or 0) then
+				local skillName = spellName or resolvedName or ("Spell #" .. tostring(spellId or 0))
+				local statInfo = { type = "heal", skill = skillName, amount = extraAmount, isCrit = false, icon = icon }
+				self:Show(INCOMING, "+" .. tostring(extraAmount), icon, db["PHEAL"], statInfo)
+			end
+		elseif db["GAIN"] == true and extraAmount >= (db["MFILTER"] or 0) then
+			local powerName = DL_POWER_NAME[powerType] or ""
+			self:Show(INCOMING, tostring(extraAmount) .. " " .. powerName, icon, db["PGAIN"])
+		end
+	end
+end
+
 function SC:DL_Aura(dstGUID, spellId, spellName, auraType, applied)
 	if not self.playerGUID or dstGUID ~= self.playerGUID then return end
 	local resolvedName, icon = self:SpellNameIcon(spellId)
@@ -689,9 +733,15 @@ function SC:OnCombatLogEvent()
 	elseif sub == "SPELL_ENERGIZE" or sub == "SPELL_PERIODIC_ENERGIZE" then
 		-- p1=spellId, p2=spellName, p3=spellSchool, p4=amount, p5=powerType
 		self:DL_Energize(dstGUID, p1, p4, p5)
+	elseif sub == "SPELL_DRAIN" or sub == "SPELL_PERIODIC_DRAIN" then
+		-- p1=spellId, p2=spellName, p3=spellSchool, p4=amount, p5=powerType, p6=extraAmount
+		self:DL_DrainLeech(srcGUID, srcName, dstGUID, dstName, p1, p2, p3, p4, p5, p6, false)
+	elseif sub == "SPELL_LEECH" or sub == "SPELL_PERIODIC_LEECH" then
+		-- p1=spellId, p2=spellName, p3=spellSchool, p4=amount, p5=powerType, p6=extraAmount
+		self:DL_DrainLeech(srcGUID, srcName, dstGUID, dstName, p1, p2, p3, p4, p5, p6, true)
 	elseif sub == "SPELL_AURA_APPLIED" or sub == "SPELL_AURA_REFRESH" or sub == "SPELL_AURA_APPLIED_DOSE" then
 		self:DL_Aura(dstGUID, p1, p2, p4, true)
-	elseif sub == "SPELL_AURA_REMOVED" or sub == "SPELL_AURA_REMOVED_DOSE" then
+	elseif sub == "SPELL_AURA_REMOVED" then
 		self:DL_Aura(dstGUID, p1, p2, p4, false)
 	elseif sub == "ENVIRONMENTAL_DAMAGE" then
 		-- p1=envType, p2=amount, p3=overkill, p4=school, p5=resisted, p6=blocked, p7=absorbed
@@ -718,35 +768,103 @@ local REPLACED_EVENTS_BASE = {
 	"CHAT_MSG_COMBAT_HOSTILEPLAYER_HITS", "CHAT_MSG_COMBAT_HOSTILEPLAYER_MISSES",
 	"CHAT_MSG_COMBAT_SELF_HITS", "CHAT_MSG_COMBAT_SELF_MISSES",
 	"CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "CHAT_MSG_SPELL_HOSTILEPLAYER_DAMAGE",
+	"CHAT_MSG_SPELL_DAMAGESHIELDS_ON_OTHERS", "CHAT_MSG_SPELL_DAMAGESHIELDS_ON_SELF",
 	"CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE", "CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE",
 	"CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "CHAT_MSG_SPELL_SELF_DAMAGE",
 	"CHAT_MSG_COMBAT_HOSTILE_DEATH",
 	"CHAT_MSG_COMBAT_PET_HITS", "CHAT_MSG_COMBAT_PET_MISSES", "CHAT_MSG_SPELL_PET_DAMAGE",
 }
+local REPLACED_EVENTS_HEAL_GAIN = {
+	"CHAT_MSG_SPELL_SELF_BUFF", "CHAT_MSG_SPELL_FRIENDLYPLAYER_BUFF", "CHAT_MSG_SPELL_PARTY_BUFF",
+	"CHAT_MSG_SPELL_PERIODIC_SELF_BUFFS", "CHAT_MSG_SPELL_PERIODIC_PARTY_BUFFS",
+	"CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_BUFFS",
+}
 local REPLACED_EVENTS_AURA = {
-	"CHAT_MSG_SPELL_SELF_BUFF", "CHAT_MSG_SPELL_CREATURE_VS_SELF_BUFF", "CHAT_MSG_SPELL_HOSTILEPLAYER_BUFF",
+	"CHAT_MSG_SPELL_CREATURE_VS_SELF_BUFF", "CHAT_MSG_SPELL_HOSTILEPLAYER_BUFF",
 	"CHAT_MSG_SPELL_AURA_GONE_SELF", "CHAT_MSG_SPELL_AURA_GONE_OTHER", "CHAT_MSG_SPELL_BREAK_AURA",
 }
 
+SC.ownedParserEvents = {}
+
+function SC:OwnsParserEvent(ev)
+	return self.backend ~= nil and self.ownedParserEvents[ev] == true
+end
+
 local function UnregisterChatEvents(list)
 	local parser = ParserLib and ParserLib:GetInstance("1.1")
-	if not parser then return end
 	for _, ev in ipairs(list) do
-		parser:UnregisterEvent("EavesDrop", ev)
+		SC.ownedParserEvents[ev] = true
+		if parser then
+			parser:UnregisterEvent("EavesDrop", ev)
+		end
+	end
+end
+
+function SC:RegisterFrameEvents()
+	local f = self.frame
+	if not f then return end
+	f:UnregisterAllEvents()
+	if self.backend == "DPSLog" or self.backend == "ClassicAPI" then
+		f:RegisterEvent("UNIT_PET")
+		if self.hasNampower then
+			f:RegisterEvent("UNIT_PET_GUID")
+		end
+		f:RegisterEvent("PLAYER_ENTERING_WORLD")
+		f:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+	elseif self.backend == "Nampower" then
+		f:RegisterEvent("UNIT_PET")
+		f:RegisterEvent("UNIT_PET_GUID")
+		f:RegisterEvent("PLAYER_ENTERING_WORLD")
+		f:RegisterEvent("SPELL_DAMAGE_EVENT_SELF")
+		f:RegisterEvent("SPELL_DAMAGE_EVENT_OTHER")
+		f:RegisterEvent("SPELL_MISS_SELF")
+		f:RegisterEvent("SPELL_MISS_OTHER")
+		f:RegisterEvent("AUTO_ATTACK_SELF")
+		f:RegisterEvent("AUTO_ATTACK_OTHER")
+		f:RegisterEvent("SPELL_HEAL_BY_SELF")
+		f:RegisterEvent("SPELL_HEAL_ON_SELF")
+		f:RegisterEvent("SPELL_ENERGIZE_ON_SELF")
+		f:RegisterEvent("UNIT_DIED")
+	end
+end
+
+function SC:Disable()
+	self.disabled = true
+	if self.frame then
+		self.frame:UnregisterAllEvents()
+	end
+	if CombatHub and type(CombatHub.Unsubscribe) == "function" then
+		CombatHub:Unsubscribe("EavesDrop_CLEU")
+		CombatHub:Unsubscribe("EavesDrop_Self")
+		CombatHub:Unsubscribe("EavesDrop_Other")
+	end
+end
+
+function SC:Enable()
+	if not self.backend then return end
+	self.disabled = false
+	UnregisterChatEvents(REPLACED_EVENTS_BASE)
+	UnregisterChatEvents(REPLACED_EVENTS_HEAL_GAIN)
+	if self.backend == "DPSLog" or self.backend == "ClassicAPI" then
+		UnregisterChatEvents(REPLACED_EVENTS_AURA)
+	end
+	if self.frame then
+		if self.AttachCombatHub then
+			self:AttachCombatHub()
+		else
+			self:RegisterFrameEvents()
+		end
 	end
 end
 
 function SC:InitCombatLogBackend(label)
 	UnregisterChatEvents(REPLACED_EVENTS_BASE)
+	UnregisterChatEvents(REPLACED_EVENTS_HEAL_GAIN)
 	UnregisterChatEvents(REPLACED_EVENTS_AURA)
 
 	local f = CreateFrame("Frame")
-	f:RegisterEvent("UNIT_PET")
-	if self.hasNampower then
-		f:RegisterEvent("UNIT_PET_GUID")
-	end
-	f:RegisterEvent("PLAYER_ENTERING_WORLD")
-	f:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+	self.frame = f
+	self:RegisterFrameEvents()
 	f:SetScript("OnEvent", function()
 		if event == "UNIT_PET" then
 			if arg1 == "player" then SC:RefreshSelfGUIDs() end
@@ -756,13 +874,13 @@ function SC:InitCombatLogBackend(label)
 			SC:OnCombatLogEvent()
 		end
 	end)
-	self.frame = f
 
 	DEFAULT_CHAT_FRAME:AddMessage("|cff7fff7fEavesDrop|r: SuperCombat active - " .. label)
 end
 
 function SC:InitNampower()
 	UnregisterChatEvents(REPLACED_EVENTS_BASE)
+	UnregisterChatEvents(REPLACED_EVENTS_HEAL_GAIN)
 
 	if type(SetCVar) == "function" then
 		for _, cvar in ipairs({ "NP_EnableAutoAttackEvents", "NP_EnableSpellHealEvents", "NP_EnableSpellEnergizeEvents" }) do
@@ -771,19 +889,8 @@ function SC:InitNampower()
 	end
 
 	local f = CreateFrame("Frame")
-	f:RegisterEvent("UNIT_PET")
-	f:RegisterEvent("UNIT_PET_GUID")
-	f:RegisterEvent("PLAYER_ENTERING_WORLD")
-	f:RegisterEvent("SPELL_DAMAGE_EVENT_SELF")
-	f:RegisterEvent("SPELL_DAMAGE_EVENT_OTHER")
-	f:RegisterEvent("SPELL_MISS_SELF")
-	f:RegisterEvent("SPELL_MISS_OTHER")
-	f:RegisterEvent("AUTO_ATTACK_SELF")
-	f:RegisterEvent("AUTO_ATTACK_OTHER")
-	f:RegisterEvent("SPELL_HEAL_BY_SELF")
-	f:RegisterEvent("SPELL_HEAL_ON_SELF")
-	f:RegisterEvent("SPELL_ENERGIZE_ON_SELF")
-	f:RegisterEvent("UNIT_DIED")
+	self.frame = f
+	self:RegisterFrameEvents()
 
 	f:SetScript("OnEvent", function()
 		if event == "UNIT_PET" then
@@ -818,8 +925,6 @@ function SC:InitNampower()
 			SC:OnUnitDied(arg1)
 		end
 	end)
-
-	self.frame = f
 
 	local msg = "|cff7fff7fEavesDrop|r: SuperCombat active - Nampower"
 	if self.hasClassicAPI then msg = msg .. " + ClassicAPI" end

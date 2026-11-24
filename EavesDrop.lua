@@ -62,6 +62,11 @@ local eventlist = {
 	"CHAT_MSG_COMBAT_HOSTILE_DEATH",
 }
 
+local eventlistSet = {}
+for _, ev in pairs(eventlist) do
+	eventlistSet[ev] = true
+end
+
 local peteventlist = {
 	"CHAT_MSG_COMBAT_PET_HITS",
 	"CHAT_MSG_SPELL_PET_DAMAGE",
@@ -115,6 +120,10 @@ function EavesDrop:OnEnable()
 			EavesDrop.CombatEvent
 		)
 	end
+
+	if self.SuperCombat and self.SuperCombat.backend and self.SuperCombat.Enable then
+		self.SuperCombat:Enable()
+	end
 	
 	--setup metro
 	self:RegisterMetro("EavesDrop", self.OnUpdate, .1, self) 
@@ -131,6 +140,9 @@ function EavesDrop:OnDisable()
 	parser:UnregisterAllEvents("EavesDrop")
 	self:UnregisterAllEvents()
 	self:UnregisterMetro("EavesDrop")
+	if self.SuperCombat and self.SuperCombat.Disable then
+		self.SuperCombat:Disable()
+	end
 	EavesDropFrame:Hide();
 end
 
@@ -149,20 +161,33 @@ function EavesDrop:UpdateCombatEvents()
 end
 
 function EavesDrop:UpdatePetEvents()
+	local sc = self.SuperCombat
 	if (self.db.profile["PET"] == true) then
 		for _, event in pairs(peteventlist) do
-			parser:RegisterEvent(
-				"EavesDrop",
-				event,
-				EavesDrop.CombatPetOutEvent
-			)
+			if not (sc and sc.OwnsParserEvent and sc:OwnsParserEvent(event)) then
+				parser:RegisterEvent(
+					"EavesDrop",
+					event,
+					EavesDrop.CombatPetOutEvent
+				)
+			end
 		end
 	else
 		for _, event in pairs(peteventlist) do
-			parser:UnregisterEvent(
-				"EavesDrop",
-				event
-			)
+			if eventlistSet[event] then
+				if not (sc and sc.OwnsParserEvent and sc:OwnsParserEvent(event)) then
+					parser:RegisterEvent(
+						"EavesDrop",
+						event,
+						EavesDrop.CombatEvent
+					)
+				end
+			else
+				parser:UnregisterEvent(
+					"EavesDrop",
+					event
+				)
+			end
 		end
 	end
 end
@@ -192,8 +217,11 @@ function EavesDrop:UpdateHonorEvents()
 end
 
 function EavesDrop:UpdateFadeEvents()
+	local sc = self.SuperCombat
 	if (self.db.profile["FADE"] == true) then
-		parser:RegisterEvent("EavesDrop","CHAT_MSG_SPELL_AURA_GONE_SELF",EavesDrop.CombatEvent)
+		if not (sc and sc.OwnsParserEvent and sc:OwnsParserEvent("CHAT_MSG_SPELL_AURA_GONE_SELF")) then
+			parser:RegisterEvent("EavesDrop","CHAT_MSG_SPELL_AURA_GONE_SELF",EavesDrop.CombatEvent)
+		end
 	else
 		parser:UnregisterEvent("EavesDrop","CHAT_MSG_SPELL_AURA_GONE_SELF")
 	end
@@ -355,7 +383,6 @@ function EavesDrop:CombatEvent(info)
 				self:DisplayEvent(INCOMING, "-"..text, texture, self:SpellColor(self.db.profile["PSPELL"], info.element))
 			end
 	elseif info.type == "leech" then
-		text = info.amountGained
 		if info.attribute == "Health" then
 			if info.source == ParserLib_SELF then
 				self:DisplayEvent(OUTGOING, text, texture, self:SpellColor(self.db.profile["TSPELL"], info.element))
@@ -363,13 +390,14 @@ function EavesDrop:CombatEvent(info)
 				self:DisplayEvent(INCOMING, "-"..text, texture, self:SpellColor(self.db.profile["PSPELL"], info.element))
 			end
 		end
-		if info.attributeGained == "Health" then
+		if info.attributeGained == "Health" and info.amountGained then
 			if info.sourceGained == ParserLib_SELF then
-				if (text < self.db.profile["HFILTER"]) then return end; 
+				local gained = info.amountGained
+				if (gained < self.db.profile["HFILTER"]) then return end; 
 				if (self:TrackStat(INCOMING, info)) then
-					text = newhigh..text..newhigh
+					gained = newhigh..gained..newhigh
 				end
-				self:DisplayEvent(INCOMING, "+"..text, texture, self.db.profile["PHEAL"])
+				self:DisplayEvent(INCOMING, "+"..gained, texture, self.db.profile["PHEAL"])
 			end
 		end
 	elseif info.type == "heal" then
@@ -422,7 +450,7 @@ function EavesDrop:CombatEvent(info)
 		end
 	elseif info.type == "gain" then
 		if (info.victim == ParserLib_SELF) then
-			if (info.attribute == "health") then
+			if (info.attribute == HEALTH or string.lower(info.attribute or "") == "health") then
 				if (text < self.db.profile["HFILTER"]) then return end; 
 				self:DisplayEvent(INCOMING, "+"..text, texture, self.db.profile["PHEAL"])
 			else
@@ -506,18 +534,12 @@ function EavesDrop:CombatPetOutEvent(info)
 			if (text < self.db.profile["HFILTER"]) then return end; 
 			if (info.isCrit) then text = critchar..text..critchar end;
 			if (self.db.profile["HEALERID"] == true and info.source ~= ParserLib_SELF) then text = text.." ("..info.source..")" end;
-			if (self:TrackStat(INCOMING, info)) then
-				text = newhigh..text..newhigh
-			end
 			self:DisplayEvent(INCOMING, "+"..text, texture, self.db.profile["PETI"], info.source ~= ParserLib_SELF and info.source or nil);
 		elseif (self:GetTargetUnit(info.source) == "pet" and self.db.profile["PET"] == true) then
 			if (text < self.db.profile["HFILTER"]) then return end; 
 			if (info.isCrit) then text = critchar..text..critchar end;
 			if (self.db.profile["HEALERID"] == true and info.source ~= ParserLib_SELF) then text = text.." ("..info.source..")" end;
-			if (self:TrackStat(INCOMING, info)) then
-				text = newhigh..text..newhigh
-			end
-			self:DisplayEvent(OUTGOING,  "+"..text, texture, self.db.profile["PETI"], info.victim)
+			self:DisplayEvent(OUTGOING,  "+"..text, texture, self.db.profile["PETO"], info.victim)
 		end
 	end
 end
@@ -537,7 +559,8 @@ function EavesDrop:DisplayEvent(type, text, texture, color, source)
 		pEvent.tooltipText = arg1;
 	end
 	if source then
-		local sourceLine = string.format('|cffffd200%s:|r %s', L["Source"], source);
+		local displaySource = (source == ParserLib_SELF) and UnitName("player") or source;
+		local sourceLine = string.format('|cffffd200%s:|r %s', L["Source"], tostring(displaySource));
 		if pEvent.tooltipText ~= nil then
 			pEvent.tooltipText = sourceLine.."\n"..pEvent.tooltipText
 		else
@@ -653,24 +676,36 @@ function EavesDrop:UpdateEvents()
 end
 
 function EavesDrop:ResetEvents()
-	local i, frame, text, intexture, outtexture;
+	local i, frame, text, intexture, outtexture, inicon, outicon;
+	local height = self.db.profile["LINEHEIGHT"];
 	for i=1,20 do
 		frame = getglobal("EavesDropEvent"..i);
 		text = getglobal("EavesDropEvent"..i.."EventText");
 		intexture = getglobal("EavesDropEvent"..i.."Incoming");
 		outtexture = getglobal("EavesDropEvent"..i.."Outgoing");
+		inicon = getglobal("EavesDropEvent"..i.."IncomingTexture");
+		outicon = getglobal("EavesDropEvent"..i.."OutgoingTexture");
 		frame.delay = 0;
 		frame.alpha = 0;
 		frame.tooltipText = nil
-		frame:SetHeight(self.db.profile["LINEHEIGHT"] + 1);
-		frame:SetWidth((self.db.profile["LINEHEIGHT"] * 2) + self.db.profile["LINEWIDTH"]);
+		frame:SetHeight(height + 1);
+		frame:SetWidth((height * 2) + self.db.profile["LINEWIDTH"]);
 		frame:Hide();
-		text:SetHeight(self.db.profile["LINEHEIGHT"]);
-		intexture:SetHeight(self.db.profile["LINEHEIGHT"]);
-		intexture:SetWidth(self.db.profile["LINEHEIGHT"]);
-		intexture:SetPoint("LEFT", frame, "RIGHT", 5, 0);
-		outtexture:SetHeight(self.db.profile["LINEHEIGHT"]);
-		outtexture:SetWidth(self.db.profile["LINEHEIGHT"]);
+		text:SetHeight(height);
+		intexture:SetHeight(height);
+		intexture:SetWidth(height);
+		intexture:ClearAllPoints();
+		intexture:SetPoint("LEFT", frame, "LEFT", 5, 0);
+		if inicon then
+			inicon:SetHeight(height);
+			inicon:SetWidth(height);
+		end
+		outtexture:SetHeight(height);
+		outtexture:SetWidth(height);
+		if outicon then
+			outicon:SetHeight(height);
+			outicon:SetWidth(height);
+		end
 	end
 end
 
@@ -707,7 +742,7 @@ function EavesDrop:OnUpdate(elapsed)
 	if (self.db.profile["FADEFRAME"] == true) then
 		if ((count == 0) and (scroll==0) and (EavesDropFrame:GetAlpha() == 1)) then
 			self:HideFrame();
-		elseif (EavesDropFrame:GetAlpha() == 0) then
+		elseif ((count > 0 or scroll > 0) and EavesDropFrame:GetAlpha() == 0) then
 			self:ShowFrame();
 		end
 	end
@@ -804,6 +839,7 @@ end
 -------------------------
 --Return the unit if for a given  target
 function EavesDrop:GetTargetUnit(target)
+	if not target then return nil end
 	local unit;
 	if (target == "player" or target == UnitName("player") or target == ParserLib_SELF) then
 		return "player";
@@ -839,25 +875,29 @@ function EavesDrop:GetOverheal(target, damage)
 end
 
 function EavesDrop:SendLineToChat(text)
+	if not text then return end
 	local channel, chatnumber = ChatFrameEditBox.chatType
 	if channel == "WHISPER" then
 		chatnumber = ChatFrameEditBox.tellTarget
 	elseif channel == "CHANNEL" then
 		chatnumber = ChatFrameEditBox.channelTarget
 	end
-	if string.sub(text, 13, 13) == ":" then
-		local timestring = string.sub(text, 11, 18);
-		local logstring = string.sub(text, 22);
-		SendChatMessage(timestring.." - "..logstring, channel, nil, chatnumber)
-	else
-		local logstring = tostring(text)
-		SendChatMessage(logstring, channel, nil, chatnumber)
+	local msg = tostring(text)
+	if string.sub(msg, 13, 13) == ":" then
+		local timestring = string.sub(msg, 11, 18);
+		local logstring = string.sub(msg, 22);
+		msg = timestring.." - "..logstring
 	end
+	msg = string.gsub(msg, "|c%x%x%x%x%x%x%x%x", "")
+	msg = string.gsub(msg, "|r", "")
+	msg = string.gsub(msg, "\n", " ")
+	SendChatMessage(msg, channel, nil, chatnumber)
 end
 
 function EavesDrop:SendHistoryToChat(text, part)
 	local nocrit = false
 	local nonormal = false
+	local firstlinetime, firstlinetext, secondlinetime, secondlinetext
 	local teststring = string.gsub(text, "\|", "")
 	local firstlinestart = string.find(teststring, "cffffffff", 1)
 	local secondlinestart = string.find(teststring, "cffffffff", 3)

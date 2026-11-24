@@ -9,8 +9,7 @@ if not CombatHub or type(CombatHub.OnPostLogin) ~= "function" then
     return
 end
 
-CombatHub:OnPostLogin(function()
-    local SC = EavesDrop and EavesDrop.SuperCombat
+local function attachToCombatHub(SC)
     if not SC or not SC.frame or not SC.backend then return end
 
     local f = SC.frame
@@ -53,5 +52,14 @@ CombatHub:OnPostLogin(function()
         }
         CombatHub:Subscribe("EavesDrop_Self", "EavesDrop (Self)", selfEvents, dispatch, nil)
         CombatHub:Subscribe("EavesDrop_Other", "EavesDrop (Filtered Other)", otherEvents, dispatch, "self_or_pet")
+    end
+end
+
+CombatHub:OnPostLogin(function()
+    local SC = EavesDrop and EavesDrop.SuperCombat
+    if not SC then return end
+    SC.AttachCombatHub = attachToCombatHub
+    if not SC.disabled then
+        attachToCombatHub(SC)
     end
 end)

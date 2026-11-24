@@ -72,7 +72,9 @@ function EavesDrop:TrackStat(type, info)
 	if ((self.db.char.Stats[type][info.type][key][critkey].amount == nil) or (info.amount > self.db.char.Stats[type][info.type][key][critkey].amount)) then
 		self.db.char.Stats[type][info.type][key][critkey].amount = info.amount;
 		self.db.char.Stats[type][info.type][key][critkey].time = geteventtime(arg1);
-		self:ScrollBar_Update()
+		if EavesDropHistoryFrame:IsShown() then
+			self:ScrollBar_Update()
+		end
 		return true;
 	end
 	return false;
@@ -106,10 +108,7 @@ function EavesDrop:ScrollBar_Update()
 		crit = getglobal("EavesDropHistoryEvent"..i.."_Crit")
 		idx = offset+i
 		if idx<=size then
-			k,key = next(sort_table)
-			for j=2,idx do
-				k,key = next(sort_table, k)
-			end
+			key = sort_table[idx]
 			texturestr = BS:GetSpellIcon(key) or current_table[key].icon;
 			texture:SetTexture(texturestr);
 			texture:SetTexCoord(.1,.9,.1,.9);
@@ -140,7 +139,7 @@ function EavesDrop:SetupHistory()
 	EavesDropHistoryFrameSkillText:SetText(L["Skill"]);
 	EavesDropHistoryFrameAmountCritText:SetText(L["Crit"]);
 	EavesDropHistoryFrameAmountNormalText:SetText(L["Normal"]);
-	r,g,b,a = self.db.profile["LABELC"].r, self.db.profile["LABELC"].g, self.db.profile["LABELC"].b, self.db.profile["LABELC"].a
+	local r,g,b,a = self.db.profile["LABELC"].r, self.db.profile["LABELC"].g, self.db.profile["LABELC"].b, self.db.profile["LABELC"].a
 	EavesDropHistoryFrameSkillText:SetTextColor(r,g,b,a);
  	EavesDropHistoryFrameAmountCritText:SetTextColor(r,g,b,a);
  	EavesDropHistoryFrameAmountNormalText:SetTextColor(r,g,b,a);
@@ -152,7 +151,7 @@ function EavesDrop:SetupHistory()
 	EavesDropHistoryButton.tooltipText = L["History"];
 	EavesDropHistoryFrameResetText:SetText(L["Reset"]);
 	--Frame
-	local r,g,b,a = self.db.profile["FRAME"].r, self.db.profile["FRAME"].g, self.db.profile["FRAME"].b, self.db.profile["FRAME"].a
+	r,g,b,a = self.db.profile["FRAME"].r, self.db.profile["FRAME"].g, self.db.profile["FRAME"].b, self.db.profile["FRAME"].a
 	EavesDropHistoryFrame:SetBackdropColor(r, g, b, a);
 	EavesDropHistoryTopBar:SetGradientAlpha("VERTICAL", r*.1, g*.1, b*.1, 0, r*.2, g*.2, b*.2, a);
 	EavesDropHistoryBottomBar:SetGradientAlpha("VERTICAL", r*.2, g*.2, b*.2, a, r*.1, g*.1, b*.1, 0);
